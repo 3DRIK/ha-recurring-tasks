@@ -1,0 +1,104 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Recurring Tasks",
+        "description": "Integrácia pre správu pravidelných domácich úloh s notifikáciami."
+      }
+    },
+    "abort": {
+      "single_instance_allowed": "Integrácia je už nainštalovaná. Úlohy pridávajte cez Nastavenia → Integrácie → Recurring Tasks → Konfigurovať."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Správa úloh",
+        "menu_options": {
+          "add_task": "➕ Pridať úlohu",
+          "edit_task": "✏️ Upraviť úlohu",
+          "delete_task": "🗑️ Odstrániť úlohu"
+        }
+      },
+      "add_task": {
+        "title": "Pridať novú úlohu",
+        "data": {
+          "name": "Názov úlohy",
+          "interval_days": "Interval (dni)",
+          "warn_before_days": "Upozorniť vopred (dni)",
+          "icon": "Ikona",
+          "notes": "Poznámky",
+          "notify": "Povoliť notifikácie",
+          "notify_service": "Notifikačná služba (napr. notify.mobile_app_telefon)",
+          "notify_time": "Čas notifikácie"
+        },
+        "data_description": {
+          "interval_days": "Ako často sa úloha opakuje. Napr. 7 = raz týždenne, 365 = raz ročne.",
+          "warn_before_days": "Koľko dní pred termínom zmení stav na 'čoskoro'.",
+          "notify_service": "Meno notifikačnej služby bez prefixu 'notify.' – napr. 'mobile_app_moj_telefon'"
+        }
+      },
+      "edit_task": {
+        "title": "Vybrať úlohu na úpravu",
+        "data": {
+          "task_id": "Úloha"
+        }
+      },
+      "edit_task_form": {
+        "title": "Upraviť úlohu",
+        "data": {
+          "name": "Názov úlohy",
+          "interval_days": "Interval (dni)",
+          "warn_before_days": "Upozorniť vopred (dni)",
+          "icon": "Ikona",
+          "notes": "Poznámky",
+          "notify": "Povoliť notifikácie",
+          "notify_service": "Notifikačná služba",
+          "notify_time": "Čas notifikácie"
+        }
+      },
+      "delete_task": {
+        "title": "Odstrániť úlohu",
+        "data": {
+          "task_id": "Úloha"
+        }
+      }
+    },
+    "abort": {
+      "no_tasks": "Žiadne úlohy na úpravu/vymazanie."
+    }
+  },
+  "services": {
+    "mark_done": {
+      "name": "Označiť úlohu ako hotovú",
+      "description": "Nastaví aktuálny čas ako čas posledného vykonania úlohy.",
+      "fields": {
+        "task_id": {
+          "name": "ID úlohy",
+          "description": "Identifikátor úlohy (atribút task_id zo senzora)."
+        }
+      }
+    },
+    "add_task": {
+      "name": "Pridať úlohu",
+      "description": "Vytvorí novú opakujúcu sa úlohu.",
+      "fields": {
+        "name": { "name": "Názov", "description": "Názov úlohy." },
+        "interval_days": { "name": "Interval (dni)", "description": "Počet dní medzi opakovaniami." },
+        "warn_before_days": { "name": "Varovanie (dni)", "description": "Koľko dní pred termínom zobraziť upozornenie." },
+        "icon": { "name": "Ikona", "description": "MDI ikona (napr. mdi:vacuum)." },
+        "notes": { "name": "Poznámky", "description": "Voliteľné poznámky k úlohe." },
+        "notify": { "name": "Notifikácie", "description": "Zapnúť notifikácie." },
+        "notify_service": { "name": "Notifikačná služba", "description": "Názov notify služby." },
+        "notify_time": { "name": "Čas notifikácie", "description": "Čas denného odoslania notifikácie (HH:MM)." }
+      }
+    },
+    "delete_task": {
+      "name": "Odstrániť úlohu",
+      "description": "Vymaže úlohu podľa ID.",
+      "fields": {
+        "task_id": { "name": "ID úlohy", "description": "Identifikátor úlohy." }
+      }
+    }
+  }
+}
