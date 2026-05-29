@@ -89,6 +89,8 @@ class RecurringTasksOptionsFlow(config_entries.OptionsFlow):
                 return await self.async_step_edit_task()
             if action == "delete":
                 return await self.async_step_delete_task()
+            if action == "set_done_date":
+                return await self.async_step_set_done_date()
 
         return self.async_show_form(
             step_id="init",
@@ -98,6 +100,7 @@ class RecurringTasksOptionsFlow(config_entries.OptionsFlow):
                         options=[
                             {"value": "add", "label": "➕ Pridať úlohu"},
                             {"value": "edit", "label": "✏️ Upraviť úlohu"},
+                            {"value": "set_done_date", "label": "📅 Nastaviť dátum vykonania"},
                             {"value": "delete", "label": "🗑️ Odstrániť úlohu"},
                         ],
                         mode=selector.SelectSelectorMode.LIST,
@@ -217,5 +220,61 @@ class RecurringTasksOptionsFlow(config_entries.OptionsFlow):
                         mode=selector.SelectSelectorMode.DROPDOWN,
                     )
                 )
+            }),
+        )
+
+    # ── SET DATE ────────────────────────────────────────────────────────────────
+    async def async_step_set_done_date(self, user_input: dict[str, Any] | None = None) -> FlowResult:
+        """Select task and set custom last-done date."""
+        coordinator = self.hass.data[DOMAIN]["coordinator"]
+        tasks = coordinator.storage.get_tasks()
+
+        if not tasks:
+            return self.async_abort(reason="no_tasks")
+
+        if user_input is not None:
+            self._selected_task_id = user_input["task_id"]
+            return await self.async_step_set_done_date_form()
+
+        return self.async_show_form(
+            step_id="set_done_date",
+            data_schema=vol.Schema({
+                vol.Required("task_id"): selector.SelectSelector(
+                    selector.SelectSelectorConfig(
+                        options=[{"value": tid, "label": t[TASK_NAME]} for tid, t in tasks.items()],
+                        mode=selector.SelectSelectorMode.DROPDOWN,
+                    )
+                )
+            }),
+        )
+
+    async def async_step_set_done_date_form(self, user_input: dict[str, Any] | None = None) -> FlowResult:
+        """Form to pick the date."""
+        coordinator = self.hass.data[DOMAIN]["coordinator"]
+
+        if user_input is not None:
+            from datetime import datetime
+            raw = user_input.get("done_date")
+            try:
+                dt = datetime.strptime(raw, "%Y-%m-%d")
+                await coordinator.storage.async_update_task(
+                    self._selected_task_id,
+                    {"last_done": dt.isoformat()}
+                )
+                await coordinator.async_refresh()
+                return self.async_create_entry(title="", data={})
+            except (ValueError, TypeError):
+                return self.async_show_form(
+                    step_id="set_done_date_form",
+                    data_schema=vol.Schema({
+                        vol.Required("done_date"): selector.DateSelector()
+                    }),
+                    errors={"done_date": "invalid_date"},
+                )
+
+        return self.async_show_form(
+            step_id="set_done_date_form",
+            data_schema=vol.Schema({
+                vol.Required("done_date"): selector.DateSelector()
             }),
         )
