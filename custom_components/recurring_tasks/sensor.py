@@ -121,6 +121,31 @@ class RecurringTaskSensor(CoordinatorEntity, SensorEntity):
         if last_done_dt:
             attrs["last_done"] = last_done_dt.strftime("%Y-%m-%d")
             attrs["last_done_formatted"] = last_done_dt.strftime("%d.%m.%Y %H:%M")
+        if due_date:
+            attrs["due_date"] = due_date.strftime("%Y-%m-%d")
+            attrs["due_date_formatted"] = due_date.strftime("%d.%m.%Y")
+           # --- PRIDAJ TOTO ---
+            days = task.get("days_remaining", 0)
+            overdue = task.get("days_overdue", 0)
+            if task.get("state") == "overdue":
+                attrs["time_remaining"] = f"Po termíne {overdue} {'deň' if overdue == 1 else 'dní'}"
+            elif days == 0:
+                attrs["time_remaining"] = "Dnes"
+            elif days == 1:
+                attrs["time_remaining"] = "Zajtra"
+            elif days < 7:
+                attrs["time_remaining"] = f"O {days} dní"
+            elif days < 14:
+                attrs["time_remaining"] = "O týždeň"
+            elif days < 30:
+                weeks = days // 7
+                attrs["time_remaining"] = f"O {weeks} {'týždeň' if weeks == 1 else 'týždne' if weeks < 5 else 'týždňov'}"
+            elif days < 365:
+                months = days // 30
+                attrs["time_remaining"] = f"O {months} {'mesiac' if months == 1 else 'mesiace' if months < 5 else 'mesiacov'}"
+            else:
+                years = days // 365
+                attrs["time_remaining"] = f"O {years} {'rok' if years == 1 else 'roky' if years < 5 else 'rokov'}"
 
         return attrs
 
