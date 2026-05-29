@@ -75,16 +75,15 @@ class RecurringTasksConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     @staticmethod
     @callback
     def async_get_options_flow(config_entry: config_entries.ConfigEntry) -> RecurringTasksOptionsFlow:
-        return RecurringTasksOptionsFlow(config_entry)
+    return RecurringTasksOptionsFlow()
 
 
 class RecurringTasksOptionsFlow(config_entries.OptionsFlow):
     """Options flow – manage tasks."""
 
-    def __init__(self, config_entry: config_entries.ConfigEntry) -> None:
-        self.config_entry = config_entry
-        self._task_action: str | None = None
-        self._selected_task_id: str | None = None
+    def __init__(self) -> None:
+    self._task_action: str | None = None
+    self._selected_task_id: str | None = None
 
     async def async_step_init(self, user_input: dict[str, Any] | None = None) -> FlowResult:
         """Main menu."""
