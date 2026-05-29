@@ -58,24 +58,27 @@ class RecurringTasksConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     VERSION = 1
 
     async def async_step_user(self, user_input: dict[str, Any] | None = None) -> FlowResult:
-        """Handle initial setup step."""
-        # Only allow one config entry
-        if self._async_current_entries():
-            return self.async_abort(reason="single_instance_allowed")
+    """Handle initial setup step."""
+    if self._async_current_entries():
+        return self.async_abort(reason="single_instance_allowed")
 
-        if user_input is not None:
-            return self.async_create_entry(title="Recurring Tasks", data={})
+    if user_input is not None:
+        return self.async_create_entry(title="Recurring Tasks", data={})
 
-        return self.async_show_form(
-            step_id="user",
-            description_placeholders={"description": "Integrácia pre správu pravidelných domácich úloh."},
-            data_schema=vol.Schema({}),
-        )
+    return self.async_show_form(
+        step_id="user",
+        data_schema=vol.Schema({
+            vol.Optional("_info", default=""): selector.TextSelector(
+                selector.TextSelectorConfig(type=selector.TextSelectorType.TEXT)
+            ),
+        }),
+        description_placeholders={"info": "Klikni Odoslať pre inštaláciu. Úlohy pridáš potom cez Konfigurovať."},
+    )
 
-    @staticmethod
+    @classmethod
     @callback
-    def async_get_options_flow(config_entry: config_entries.ConfigEntry) -> RecurringTasksOptionsFlow:
-    return RecurringTasksOptionsFlow()
+    def async_get_options_flow(cls, config_entry: config_entries.ConfigEntry) -> RecurringTasksOptionsFlow:
+        return RecurringTasksOptionsFlow()
 
 
 class RecurringTasksOptionsFlow(config_entries.OptionsFlow):
@@ -86,11 +89,31 @@ class RecurringTasksOptionsFlow(config_entries.OptionsFlow):
     self._selected_task_id: str | None = None
 
     async def async_step_init(self, user_input: dict[str, Any] | None = None) -> FlowResult:
-        """Main menu."""
-        return self.async_show_menu(
-            step_id="init",
-            menu_options=["add_task", "edit_task", "delete_task"],
-        )
+    """Main menu."""
+    if user_input is not None:
+        action = user_input.get("action")
+        if action == "add":
+            return await self.async_step_add_task()
+        if action == "edit":
+            return await self.async_step_edit_task()
+        if action == "delete":
+            return await self.async_step_delete_task()
+
+    return self.async_show_form(
+        step_id="init",
+        data_schema=vol.Schema({
+            vol.Required("action"): selector.SelectSelector(
+                selector.SelectSelectorConfig(
+                    options=[
+                        {"value": "add", "label": "➕ Pridať úlohu"},
+                        {"value": "edit", "label": "✏️ Upraviť úlohu"},
+                        {"value": "delete", "label": "🗑️ Odstrániť úlohu"},
+                    ],
+                    mode=selector.SelectSelectorMode.LIST,
+                )
+            )
+        }),
+    )
 
     # ── ADD ──────────────────────────────────────────────────────────────────
 
