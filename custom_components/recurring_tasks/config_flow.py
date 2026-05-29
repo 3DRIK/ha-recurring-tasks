@@ -7,7 +7,7 @@ from typing import Any
 import voluptuous as vol
 
 from homeassistant import config_entries
-from homeassistant.core import HomeAssistant, callback
+from homeassistant.core import callback
 from homeassistant.data_entry_flow import FlowResult
 from homeassistant.helpers import selector
 
@@ -44,7 +44,7 @@ TASK_SCHEMA = vol.Schema(
             selector.TextSelectorConfig(type=selector.TextSelectorType.TEXT, multiline=True)
         ),
         vol.Optional(TASK_NOTIFY, default=False): selector.BooleanSelector(),
-        vol.Optional(TASK_NOTIFY_SERVICE, default="notify.mobile_app"): selector.TextSelector(
+        vol.Optional(TASK_NOTIFY_SERVICE, default=""): selector.TextSelector(
             selector.TextSelectorConfig(type=selector.TextSelectorType.TEXT)
         ),
         vol.Optional(TASK_NOTIFY_TIME, default=DEFAULT_NOTIFY_TIME): selector.TimeSelector(),
@@ -58,26 +58,17 @@ class RecurringTasksConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     VERSION = 1
 
     async def async_step_user(self, user_input: dict[str, Any] | None = None) -> FlowResult:
-    """Handle initial setup step."""
-    if self._async_current_entries():
-        return self.async_abort(reason="single_instance_allowed")
-
-    if user_input is not None:
-        return self.async_create_entry(title="Recurring Tasks", data={})
-
-    return self.async_show_form(
-        step_id="user",
-        data_schema=vol.Schema({
-            vol.Optional("_info", default=""): selector.TextSelector(
-                selector.TextSelectorConfig(type=selector.TextSelectorType.TEXT)
-            ),
-        }),
-        description_placeholders={"info": "Klikni Odoslať pre inštaláciu. Úlohy pridáš potom cez Konfigurovať."},
-    )
+        """Handle initial setup step."""
+        if self._async_current_entries():
+            return self.async_abort(reason="single_instance_allowed")
+        if user_input is not None:
+            return self.async_create_entry(title="Recurring Tasks", data={})
+        return self.async_show_form(step_id="user")
 
     @classmethod
     @callback
-    def async_get_options_flow(cls, config_entry: config_entries.ConfigEntry) -> RecurringTasksOptionsFlow:
+    def async_get_options_flow(cls, config_entry: config_entries.ConfigEntry) -> "RecurringTasksOptionsFlow":
+        """Return options flow."""
         return RecurringTasksOptionsFlow()
 
 
@@ -85,45 +76,43 @@ class RecurringTasksOptionsFlow(config_entries.OptionsFlow):
     """Options flow – manage tasks."""
 
     def __init__(self) -> None:
-    self._task_action: str | None = None
-    self._selected_task_id: str | None = None
+        """Initialize."""
+        self._selected_task_id: str | None = None
 
     async def async_step_init(self, user_input: dict[str, Any] | None = None) -> FlowResult:
-    """Main menu."""
-    if user_input is not None:
-        action = user_input.get("action")
-        if action == "add":
-            return await self.async_step_add_task()
-        if action == "edit":
-            return await self.async_step_edit_task()
-        if action == "delete":
-            return await self.async_step_delete_task()
+        """Main menu."""
+        if user_input is not None:
+            action = user_input.get("action")
+            if action == "add":
+                return await self.async_step_add_task()
+            if action == "edit":
+                return await self.async_step_edit_task()
+            if action == "delete":
+                return await self.async_step_delete_task()
 
-    return self.async_show_form(
-        step_id="init",
-        data_schema=vol.Schema({
-            vol.Required("action"): selector.SelectSelector(
-                selector.SelectSelectorConfig(
-                    options=[
-                        {"value": "add", "label": "➕ Pridať úlohu"},
-                        {"value": "edit", "label": "✏️ Upraviť úlohu"},
-                        {"value": "delete", "label": "🗑️ Odstrániť úlohu"},
-                    ],
-                    mode=selector.SelectSelectorMode.LIST,
+        return self.async_show_form(
+            step_id="init",
+            data_schema=vol.Schema({
+                vol.Required("action"): selector.SelectSelector(
+                    selector.SelectSelectorConfig(
+                        options=[
+                            {"value": "add", "label": "➕ Pridať úlohu"},
+                            {"value": "edit", "label": "✏️ Upraviť úlohu"},
+                            {"value": "delete", "label": "🗑️ Odstrániť úlohu"},
+                        ],
+                        mode=selector.SelectSelectorMode.LIST,
+                    )
                 )
-            )
-        }),
-    )
+            }),
+        )
 
     # ── ADD ──────────────────────────────────────────────────────────────────
 
     async def async_step_add_task(self, user_input: dict[str, Any] | None = None) -> FlowResult:
         """Add a new task."""
-        errors: dict[str, str] = {}
-
         if user_input is not None:
             coordinator = self.hass.data[DOMAIN]["coordinator"]
-            task_data = {
+            await coordinator.async_create_task({
                 TASK_NAME: user_input[TASK_NAME],
                 TASK_INTERVAL_DAYS: int(user_input[TASK_INTERVAL_DAYS]),
                 TASK_WARN_BEFORE_DAYS: int(user_input.get(TASK_WARN_BEFORE_DAYS, DEFAULT_WARN_BEFORE_DAYS)),
@@ -132,15 +121,10 @@ class RecurringTasksOptionsFlow(config_entries.OptionsFlow):
                 TASK_NOTIFY: user_input.get(TASK_NOTIFY, False),
                 TASK_NOTIFY_SERVICE: user_input.get(TASK_NOTIFY_SERVICE, ""),
                 TASK_NOTIFY_TIME: user_input.get(TASK_NOTIFY_TIME, DEFAULT_NOTIFY_TIME),
-            }
-            await coordinator.async_create_task(task_data)
+            })
             return self.async_create_entry(title="", data={})
 
-        return self.async_show_form(
-            step_id="add_task",
-            data_schema=TASK_SCHEMA,
-            errors=errors,
-        )
+        return self.async_show_form(step_id="add_task", data_schema=TASK_SCHEMA)
 
     # ── EDIT ─────────────────────────────────────────────────────────────────
 
@@ -156,13 +140,12 @@ class RecurringTasksOptionsFlow(config_entries.OptionsFlow):
             self._selected_task_id = user_input["task_id"]
             return await self.async_step_edit_task_form()
 
-        task_options = {tid: t[TASK_NAME] for tid, t in tasks.items()}
         return self.async_show_form(
             step_id="edit_task",
             data_schema=vol.Schema({
                 vol.Required("task_id"): selector.SelectSelector(
                     selector.SelectSelectorConfig(
-                        options=[{"value": k, "label": v} for k, v in task_options.items()],
+                        options=[{"value": tid, "label": t[TASK_NAME]} for tid, t in tasks.items()],
                         mode=selector.SelectSelectorMode.DROPDOWN,
                     )
                 )
@@ -175,7 +158,7 @@ class RecurringTasksOptionsFlow(config_entries.OptionsFlow):
         task = coordinator.storage.get_task(self._selected_task_id)
 
         if user_input is not None:
-            updates = {
+            await coordinator.async_update_task(self._selected_task_id, {
                 TASK_NAME: user_input[TASK_NAME],
                 TASK_INTERVAL_DAYS: int(user_input[TASK_INTERVAL_DAYS]),
                 TASK_WARN_BEFORE_DAYS: int(user_input.get(TASK_WARN_BEFORE_DAYS, DEFAULT_WARN_BEFORE_DAYS)),
@@ -184,12 +167,12 @@ class RecurringTasksOptionsFlow(config_entries.OptionsFlow):
                 TASK_NOTIFY: user_input.get(TASK_NOTIFY, False),
                 TASK_NOTIFY_SERVICE: user_input.get(TASK_NOTIFY_SERVICE, ""),
                 TASK_NOTIFY_TIME: user_input.get(TASK_NOTIFY_TIME, DEFAULT_NOTIFY_TIME),
-            }
-            await coordinator.async_update_task(self._selected_task_id, updates)
+            })
             return self.async_create_entry(title="", data={})
 
-        prefill = vol.Schema(
-            {
+        return self.async_show_form(
+            step_id="edit_task_form",
+            data_schema=vol.Schema({
                 vol.Required(TASK_NAME, default=task.get(TASK_NAME, "")): selector.TextSelector(
                     selector.TextSelectorConfig(type=selector.TextSelectorType.TEXT)
                 ),
@@ -208,10 +191,8 @@ class RecurringTasksOptionsFlow(config_entries.OptionsFlow):
                     selector.TextSelectorConfig(type=selector.TextSelectorType.TEXT)
                 ),
                 vol.Optional(TASK_NOTIFY_TIME, default=task.get(TASK_NOTIFY_TIME, DEFAULT_NOTIFY_TIME)): selector.TimeSelector(),
-            }
+            }),
         )
-
-        return self.async_show_form(step_id="edit_task_form", data_schema=prefill)
 
     # ── DELETE ────────────────────────────────────────────────────────────────
 
@@ -227,13 +208,12 @@ class RecurringTasksOptionsFlow(config_entries.OptionsFlow):
             await coordinator.async_delete_task(user_input["task_id"])
             return self.async_create_entry(title="", data={})
 
-        task_options = {tid: t[TASK_NAME] for tid, t in tasks.items()}
         return self.async_show_form(
             step_id="delete_task",
             data_schema=vol.Schema({
                 vol.Required("task_id"): selector.SelectSelector(
                     selector.SelectSelectorConfig(
-                        options=[{"value": k, "label": v} for k, v in task_options.items()],
+                        options=[{"value": tid, "label": t[TASK_NAME]} for tid, t in tasks.items()],
                         mode=selector.SelectSelectorMode.DROPDOWN,
                     )
                 )
